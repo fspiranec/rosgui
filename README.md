@@ -1,31 +1,48 @@
 # PDK assistant
 
-This starter app opens a small GUI with:
+This app opens a small Windows-focused GUI to send robot commands in one terminal.
 
-- A text box for robot name.
-- A **Connect** button.
-- An **Open RobotAPI container** button.
-- A **Get tilt status** button.
+## Layout
 
-On Windows, the app opens a new Command Prompt terminal window when the app starts.
-If that terminal window is closed, the app automatically opens a new one on the next button click.
+- Robot name field + **Connect**
+- **API Frame**
+  - **Start Robot_API**
+  - **Open Robot_API**
+  - **Run Roslaunch**
+- **Tilt Frame**
+  - **Tilt System- State**
 
-## Buttons
+## Commands sent
 
-- **Connect** sends:
+- **Connect**
 
 ```bash
 ssh -tt gideon@<robot_name>
 ```
 
-- **Open RobotAPI container** sends (in order, in the same terminal):
+- **Start Robot_API**
+
+```bash
+ssh -tt gideon@<robot_name>
+docker start gideon_robot_api_cont
+```
+
+- **Open Robot_API**
 
 ```bash
 ssh -tt gideon@<robot_name>
 docker exec -it gideon_robot_api_cont bash
 ```
 
-- **Get tilt status** sends (in order, in the same terminal):
+- **Run Roslaunch**
+
+```bash
+ssh -tt gideon@<robot_name>
+docker exec -it gideon_robot_api_cont bash
+roslaunch trailerbot_mitsubishi_ros trailerbot_mitsubishi_ros_node_karbon_beckhoff.launch
+```
+
+- **Tilt System- State**
 
 ```bash
 ssh -tt gideon@<robot_name>
@@ -39,4 +56,4 @@ rostopic echo /mitsubishi_atul1/robot/tilt_system/state
 python app.py
 ```
 
-> Note: Terminal auto-open and command send are implemented for Windows (`cmd`).
+> Note: Terminal auto-open and command sending are implemented for Windows (`cmd`).
