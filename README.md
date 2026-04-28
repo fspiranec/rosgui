@@ -2,15 +2,18 @@
 
 This app opens a small Windows-focused GUI to send robot commands in one terminal.
 
-## Layout
+## Startup behavior
 
-- Robot name field + **Connect**
-- **API Frame**
-  - **Start Robot_API**
-  - **Open Robot_API**
-  - **Run Roslaunch**
-- **Tilt Frame**
-  - **Tilt System- State**
+- The Python console window is hidden on Windows when possible.
+- The command terminal is **not** opened on app start.
+- The terminal opens only when you click a button that sends a command.
+
+## Layout order
+
+1. **API**
+2. **BRAIN**
+3. **SAFETY**
+4. **TILT**
 
 ## Commands sent
 
@@ -19,6 +22,8 @@ This app opens a small Windows-focused GUI to send robot commands in one termina
 ```bash
 ssh -tt gideon@<robot_name>
 ```
+
+### API
 
 - **Start Robot_API**
 
@@ -42,6 +47,34 @@ docker exec -it gideon_robot_api_cont bash
 roslaunch trailerbot_mitsubishi_ros trailerbot_mitsubishi_ros_node_karbon_beckhoff.launch
 ```
 
+### BRAIN
+
+- **Stop Brain Start App**
+
+```bash
+ssh -tt gideon@<robot_name>
+docker stop brain_start_app
+```
+
+- **Stop Brain**
+
+```bash
+ssh -tt gideon@<robot_name>
+docker stop brain_cont
+```
+
+### SAFETY
+
+- **Send Brain State Reference** (uses the nearby 2-digit value field)
+
+```bash
+ssh -tt gideon@<robot_name>
+docker exec -it gideon_robot_api_cont bash
+rostopic pub -r 500 /mitsubishi_atul1/robot/safety_system/command safety_ros_msgs/SafetySystemMonitoringCaseCommandMsg "ReferenceMonitoringCase: <x>"
+```
+
+### TILT
+
 - **Tilt System- State**
 
 ```bash
@@ -56,4 +89,4 @@ rostopic echo /mitsubishi_atul1/robot/tilt_system/state
 python app.py
 ```
 
-> Note: Terminal auto-open and command sending are implemented for Windows (`cmd`).
+> Note: Terminal automation is implemented for Windows (`cmd`).

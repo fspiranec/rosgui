@@ -1,3 +1,4 @@
+import ctypes
 import subprocess
 import sys
 import tkinter as tk
@@ -8,11 +9,11 @@ class RobotConnectorApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("PDK assistant")
-        self.root.geometry("760x320")
+        self.root.geometry("900x420")
         self.terminal_process: subprocess.Popen[str] | None = None
 
+        self._hide_python_console_on_windows()
         self._build_ui()
-        self._open_windows_terminal()
 
     def _build_ui(self) -> None:
         main = tk.Frame(self.root, padx=16, pady=16)
@@ -31,7 +32,8 @@ class RobotConnectorApp:
         connect_button = tk.Button(robot_row, text="Connect", command=self.connect_to_robot)
         connect_button.pack(side=tk.RIGHT)
 
-        api_frame = tk.LabelFrame(main, text="API Frame", padx=12, pady=12)
+        # API (1st)
+        api_frame = tk.LabelFrame(main, text="API", padx=12, pady=12)
         api_frame.pack(fill=tk.X, pady=(14, 10))
 
         tk.Button(
@@ -55,7 +57,48 @@ class RobotConnectorApp:
             width=20,
         ).pack(side=tk.LEFT)
 
-        tilt_frame = tk.LabelFrame(main, text="Tilt Frame", padx=12, pady=12)
+        # BRAIN (2nd)
+        brain_frame = tk.LabelFrame(main, text="BRAIN", padx=12, pady=12)
+        brain_frame.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Button(
+            brain_frame,
+            text="Stop Brain Start App",
+            command=self.stop_brain_start_app,
+            width=20,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            brain_frame,
+            text="Stop Brain",
+            command=self.stop_brain,
+            width=20,
+        ).pack(side=tk.LEFT)
+
+        # SAFETY (3rd)
+        safety_frame = tk.LabelFrame(main, text="SAFETY", padx=12, pady=12)
+        safety_frame.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Label(safety_frame, text="Reference case (0-99):").pack(side=tk.LEFT)
+        self.reference_case_var = tk.StringVar()
+        vcmd = (self.root.register(self._validate_two_digits), "%P")
+        tk.Entry(
+            safety_frame,
+            textvariable=self.reference_case_var,
+            width=6,
+            validate="key",
+            validatecommand=vcmd,
+        ).pack(side=tk.LEFT, padx=(8, 12))
+
+        tk.Button(
+            safety_frame,
+            text="Send Brain State Reference",
+            command=self.send_brain_state_reference,
+            width=28,
+        ).pack(side=tk.LEFT)
+
+        # TILT (4th)
+        tilt_frame = tk.LabelFrame(main, text="TILT", padx=12, pady=12)
         tilt_frame.pack(fill=tk.X, pady=(0, 10))
 
         tk.Button(
@@ -65,8 +108,24 @@ class RobotConnectorApp:
             width=20,
         ).pack(side=tk.LEFT)
 
-        self.status_var = tk.StringVar(value="Ready")
+        self.status_var = tk.StringVar(value="Ready (terminal opens on first command)")
         tk.Label(main, textvariable=self.status_var, fg="#444").pack(anchor="w", pady=(8, 0))
+
+    def _validate_two_digits(self, value: str) -> bool:
+        return value.isdigit() and len(value) <= 2 or value == ""
+
+    def _hide_python_console_on_windows(self) -> None:
+        if sys.platform != "win32":
+            return
+
+        try:
+            kernel32 = ctypes.windll.kernel32
+            user32 = ctypes.windll.user32
+            console_window = kernel32.GetConsoleWindow()
+            if console_window:
+                user32.ShowWindow(console_window, 0)  # SW_HIDE
+        except Exception:
+            pass
 
     def _open_windows_terminal(self) -> None:
         if sys.platform != "win32":
@@ -153,6 +212,31 @@ class RobotConnectorApp:
                 "roslaunch trailerbot_mitsubishi_ros "
                 "trailerbot_mitsubishi_ros_node_karbon_beckhoff.launch"
             ),
+        )
+
+    def stop_brain_start_app(self) -> None:
+        self._send_ssh_then("docker stop brain_start_app")
+
+    def stop_brain(self) -> None:
+        self._send_ssh_then("docker stop brain_cont")
+
+    def send_brain_state_reference(self) -> None:
+        reference_case = self.reference_case_var.get().strip()
+        if not reference_case:
+            messagebox.showwarning(
+                "Missing reference value",
+                "Please enter a reference value (0-99).",
+            )
+            return
+
+        command = (
+            "rostopic pub -r 500 /mitsubishi_atul1/robot/safety_system/command "
+            "safety_ros_msgs/SafetySystemMonitoringCaseCommandMsg "
+            f'"ReferenceMonitoringCase: {reference_case}"'
+        )
+        self._send_ssh_then(
+            "docker exec -it gideon_robot_api_cont bash",
+            command,
         )
 
     def get_tilt_status(self) -> None:
