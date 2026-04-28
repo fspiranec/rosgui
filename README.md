@@ -4,15 +4,23 @@ This starter app opens a small GUI with:
 
 - A text box for robot name.
 - A **Connect** button.
+- An **Open robotAPI container** button.
 
 On Windows, the app opens a new Command Prompt terminal window when the app starts.
-When you click **Connect**, it sends:
+
+- Clicking **Connect** sends:
 
 ```bash
-ssh gideon@<robot_name>
+ssh -tt gideon@<robot_name>
 ```
 
-to that terminal.
+- Clicking **Open robotAPI container** sends:
+
+```bash
+docker exec -it gideon_robot_api_cont bash
+```
+
+Both commands are sent to the same terminal window.
 
 ## Run
 
