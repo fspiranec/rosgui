@@ -108,6 +108,13 @@ class RobotConnectorApp:
             width=20,
         ).pack(side=tk.LEFT)
 
+        tk.Button(
+            tilt_frame,
+            text="Stop Current Command (Ctrl+C)",
+            command=self.stop_current_command,
+            width=28,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
         self.status_var = tk.StringVar(value="Ready (terminal opens on first command)")
         tk.Label(main, textvariable=self.status_var, fg="#444").pack(anchor="w", pady=(8, 0))
 
@@ -180,6 +187,21 @@ class RobotConnectorApp:
             self.status_var.set("Failed to send command.")
             messagebox.showerror("Command Error", f"Could not send command: {exc}")
 
+    def _send_ctrl_c_to_terminal(self) -> None:
+        if not self._ensure_terminal():
+            messagebox.showerror("No terminal", "Could not create or access a terminal window.")
+            return
+
+        assert self.terminal_process is not None and self.terminal_process.stdin is not None
+
+        try:
+            self.terminal_process.stdin.write("\x03")
+            self.terminal_process.stdin.flush()
+            self.status_var.set("Sent Ctrl+C to terminal.")
+        except Exception as exc:
+            self.status_var.set("Failed to send Ctrl+C.")
+            messagebox.showerror("Command Error", f"Could not send Ctrl+C: {exc}")
+
     def _robot_name(self) -> str | None:
         robot_name = self.robot_name_var.get().strip()
         if not robot_name:
@@ -244,6 +266,9 @@ class RobotConnectorApp:
             "docker exec -it gideon_robot_api_cont bash",
             "rostopic echo /mitsubishi_atul1/robot/tilt_system/state",
         )
+
+    def stop_current_command(self) -> None:
+        self._send_ctrl_c_to_terminal()
 
 
 if __name__ == "__main__":
