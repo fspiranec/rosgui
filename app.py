@@ -9,7 +9,7 @@ class RobotConnectorApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("PDK assistant")
-        self.root.geometry("900x420")
+        self.root.geometry("900x540")
         self.terminal_process: subprocess.Popen[str] | None = None
 
         self._hide_python_console_on_windows()
@@ -108,6 +108,45 @@ class RobotConnectorApp:
             width=20,
         ).pack(side=tk.LEFT)
 
+        tk.Button(
+            tilt_frame,
+            text="Stop Current Command (Ctrl+C)",
+            command=self.stop_current_command,
+            width=28,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        # AUDIO-VISUAL DEVICE CHECK (5th)
+        audio_visual_frame = tk.LabelFrame(main, text="AUDIO-VISUAL DEVICE CHECK", padx=12, pady=12)
+        audio_visual_frame.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn On Right Turning Lights",
+            command=self.turn_on_right_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn Off Right Turning Lights",
+            command=self.turn_off_right_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn On Left Turning Lights",
+            command=self.turn_on_left_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn Off Left Turning Lights",
+            command=self.turn_off_left_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT)
+
         self.status_var = tk.StringVar(value="Ready (terminal opens on first command)")
         tk.Label(main, textvariable=self.status_var, fg="#444").pack(anchor="w", pady=(8, 0))
 
@@ -180,6 +219,21 @@ class RobotConnectorApp:
             self.status_var.set("Failed to send command.")
             messagebox.showerror("Command Error", f"Could not send command: {exc}")
 
+    def _send_ctrl_c_to_terminal(self) -> None:
+        if not self._ensure_terminal():
+            messagebox.showerror("No terminal", "Could not create or access a terminal window.")
+            return
+
+        assert self.terminal_process is not None and self.terminal_process.stdin is not None
+
+        try:
+            self.terminal_process.stdin.write("\x03")
+            self.terminal_process.stdin.flush()
+            self.status_var.set("Sent Ctrl+C to terminal.")
+        except Exception as exc:
+            self.status_var.set("Failed to send Ctrl+C.")
+            messagebox.showerror("Command Error", f"Could not send Ctrl+C: {exc}")
+
     def _robot_name(self) -> str | None:
         robot_name = self.robot_name_var.get().strip()
         if not robot_name:
@@ -244,6 +298,32 @@ class RobotConnectorApp:
             "docker exec -it gideon_robot_api_cont bash",
             "rostopic echo /mitsubishi_atul1/robot/tilt_system/state",
         )
+
+    def stop_current_command(self) -> None:
+        self._send_ctrl_c_to_terminal()
+
+    def _send_turning_light_command(self, light_name: str, output_value: bool) -> None:
+        output_value_text = "true" if output_value else "false"
+        command = (
+            "rosservice call /mitsubishi_atul1/robot/io_system/digital_command "
+            f"\"DigitalOutputName: '{light_name}' DigitalOutputValue: {output_value_text}\""
+        )
+        self._send_ssh_then(
+            "docker exec -it gideon_robot_api_cont bash",
+            command,
+        )
+
+    def turn_on_right_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningRight", True)
+
+    def turn_off_right_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningRight", False)
+
+    def turn_on_left_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningLeft", True)
+
+    def turn_off_left_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningLeft", False)
 
 
 if __name__ == "__main__":
