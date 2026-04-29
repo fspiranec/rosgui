@@ -9,7 +9,7 @@ class RobotConnectorApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("PDK assistant")
-        self.root.geometry("900x420")
+        self.root.geometry("900x540")
         self.terminal_process: subprocess.Popen[str] | None = None
 
         self._hide_python_console_on_windows()
@@ -114,6 +114,38 @@ class RobotConnectorApp:
             command=self.stop_current_command,
             width=28,
         ).pack(side=tk.LEFT, padx=(8, 0))
+
+        # AUDIO-VISUAL DEVICE CHECK (5th)
+        audio_visual_frame = tk.LabelFrame(main, text="AUDIO-VISUAL DEVICE CHECK", padx=12, pady=12)
+        audio_visual_frame.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn On Right Turning Lights",
+            command=self.turn_on_right_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn Off Right Turning Lights",
+            command=self.turn_off_right_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn On Left Turning Lights",
+            command=self.turn_on_left_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        tk.Button(
+            audio_visual_frame,
+            text="Turn Off Left Turning Lights",
+            command=self.turn_off_left_turning_lights,
+            width=30,
+        ).pack(side=tk.LEFT)
 
         self.status_var = tk.StringVar(value="Ready (terminal opens on first command)")
         tk.Label(main, textvariable=self.status_var, fg="#444").pack(anchor="w", pady=(8, 0))
@@ -269,6 +301,29 @@ class RobotConnectorApp:
 
     def stop_current_command(self) -> None:
         self._send_ctrl_c_to_terminal()
+
+    def _send_turning_light_command(self, light_name: str, output_value: bool) -> None:
+        output_value_text = "true" if output_value else "false"
+        command = (
+            "rosservice call /mitsubishi_atul1/robot/io_system/digital_command "
+            f"\"DigitalOutputName: '{light_name}' DigitalOutputValue: {output_value_text}\""
+        )
+        self._send_ssh_then(
+            "docker exec -it gideon_robot_api_cont bash",
+            command,
+        )
+
+    def turn_on_right_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningRight", True)
+
+    def turn_off_right_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningRight", False)
+
+    def turn_on_left_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningLeft", True)
+
+    def turn_off_left_turning_lights(self) -> None:
+        self._send_turning_light_command("TurningLeft", False)
 
 
 if __name__ == "__main__":
